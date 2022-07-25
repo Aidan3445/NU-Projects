@@ -1,0 +1,60 @@
+HOW TO USE THE GUI
+- Once launched, the program will display a white screen. There is a panel on the right side of the
+screen split into 3 different areas.
+    - The top is a histogram of the current image. Since the initial image is a blank, white image,
+    the histogram shows a peak on the far left side. The histogram will change as you perform
+    operations on the current image to show how the frequencies of different values change.
+    - The middle area is a list of all the operations that can be performed on an image.
+    - The bottom area is used to load a new image and save the current image.
+    - It's important to note that if you work on an image and choose to load a new image, the old
+      image that was worked on will be lost.
+- To load an image, click the button named "Load image" located at the bottom of the side panel and
+navigate to the image file you wish to open. This program only supports BMP, JPG, JPEG, PNG, and
+PPM files.
+- To perform any operation on the currently displayed image, choose the corresponding operation from
+the middle area of the side panel.
+- To save the currently displayed image, click the button named "Save image" located at the bottom
+of the side panel and navigate to the folder you wish to save this image to. Don't forget to name
+the file and choose a compatible file type.
+
+HOW TO USE THE TEXT BASED PROGRAM: SCRIPT COMMANDS THAT ARE SUPPORTED
+The following script commands are supported (presented in the format of [command] [arguments]).
+Examples (in ''), explanation, and conditions (if applicable) are provided underneath each command.
+1. load image-path image-name
+   'load HW5/res/hbars4x4.ppm hbars'
+   if 'set-source HW5/res/' is used before: 'load hbars4x4.ppm hbars'
+   Condition: must be used before using any other command.
+2. save image-name image-path
+   'save hbars HW5/res/hbars.jpg'
+   if 'set-source HW5/res/' is used before: 'save hbars hbars4x4.jpg'
+3. available-images
+   'available-images'
+4. set-source path
+   'set-source HW5/res/'
+5. red-component image-name destination-image-name
+   'red-component hbars hbarsRed'
+6. green-component image-name destination-image-name
+    'green-component hbars hbarsGreen'
+7. blue-component image-name destination-image-name
+    'blue-component hbars hbarsBlue'
+8. value-component image-name destination-image-name
+    'value-component hbars hbarsValue'
+9. luma-component image-name destination-image-name
+    'luma-component hbars hbarsLuma'
+10. intensity-component image-name destination-image-name
+    'intensity-component hbars hbarsIntensity'
+11. greyscale image-name destination-image-name
+    'greyscale hbars hbarsGrey'
+12. sepia image-name destination-image-name
+    'sepia hbars hbarsSepia'
+    'sepia hbarsInntesity hbarsSepiaIntensity'
+13. brighten increment image-name destination-image-name
+    'brighten 10 hbars hbarsBright'
+14. gaussian-blur increment image-name destination-image-name
+    'gaussian-blur 10 hbars hbarsGaussian'
+15. sharpen image-name destination-image-name
+    'sharpen 10 hbars hbarsSharp'
+16. horizontal-flip image-name destination-image-name
+    'horizontal-flip 10 hbars hbarsHorizontal'
+17. vertical-flip image-name destination-image-name
+    'vertical-flip 10 hbars hbarsVertical'

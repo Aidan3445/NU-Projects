@@ -1,0 +1,38 @@
+set-source res/
+load penguin.bmp pBMP
+load penguin.jpeg pJPEG
+load penguin.jpg pJPG
+load penguin.png pPNG
+load penguin.ppm pPPM
+red-component pBMP pRed
+green-component pBMP pGreen
+blue-component pBMP pBlue
+value-component pJPEG pValue
+luma-component pJPEG pLuma
+intensity-component pJPEG pIntensity
+greyscale pJPG pGrey
+sepia pJPG pSepia
+brighten 1 pJPG pBright1
+brighten 5 pPNG pBright5
+gaussian-blur 1 pPNG pGaussianBlur1
+gaussian-blur 5 pPPM pGaussianBlur5
+sharpen pPPM pSharp
+horizontal-flip pPNG pHorizontalFlip
+vertical-flip pPPM pVerticalFlip
+set-source res/script/
+save pRed penguin_redComponent.JPEG
+save pGreen penguin_greenComponent.JPG
+save pBlue penguin_BlueComponent.PNG
+save pValue penguin_valueComponent.PNG
+save pLuma penguin_lumaComponent.PPM
+save pIntensity penguin_intensityComponent.BMP
+save pGrey penguin_greyscale.PNG
+save pSepia penguin_sepia.PPM
+save pBright1 penguin_brightenBy1.BMP
+save pBright5 penguin_brightenBy5.PPM
+save pGaussianBlur1 penguin_gaussianBlurBy1.JPEG
+save pGaussianBlur5 penguin_gaussianBlurBy5.PNG
+save pSharp penguin_sharpen.JPG
+save pHorizontalFlip penguin_horizontalFlip.PPM
+save pVerticalFlip penguin_verticalFlip.BMP
+q

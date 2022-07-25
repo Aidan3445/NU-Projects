@@ -1,0 +1,149 @@
+import java.util.ArrayList;
+import java.util.Random;
+import tester.*;
+import javalib.impworld.*;
+import java.awt.Color;
+import javalib.worldimages.*;
+
+class Maze extends World {
+  int width = 1220;
+  int height = 800;
+  int sizeW;
+  int sizeH;
+  int cols;
+  int rows;
+  ArrayList<ArrayList<Node>> field;
+  Node current;
+  boolean running =  true;
+  boolean DFS = true; //if false BFS is used
+
+  Maze(int resolution) {
+    this.cols = this.width / resolution;
+    this.rows = this.height / resolution;
+    this.sizeW = resolution;
+    this.sizeH = resolution;
+    this.generateMaze();
+  }
+
+  void generateMaze() {
+    this.field = new ArrayList<ArrayList<Node>>();
+    for (int i = 0; i < this.cols; i++) {
+      this.field.add(new ArrayList<Node>());
+      for (int j = 0; j < this.rows; j++) {
+        this.field.get(i).add(new Node(i, j));
+      }
+    }
+    //    for (int i = 0; i < this.cols; i++) {
+    //      for (int j = 0; j < this.rows; j++) {
+    //        this.field.get(i).get(j).setNeighbors(this.field, i, j);
+    //      }
+    //    }
+    //    for (int i = 0; i < this.cols; i++) {
+    //      for (int j = 0; j < this.rows; j++) {
+    //        this.field.get(i).get(j).randomRemove();
+    //      }
+    
+    this.field.get(cols - 1).get(rows - 1).setNeighbors(field, cols - 1, rows - 1);
+    this.field.get(cols - 1).get(rows - 1).color = Color.red;
+    for (Node n : this.field.get(cols - 1).get(rows - 1).neighbors) {
+      n.color = Color.blue;
+    }
+
+    this.field.get(0).get(rows - 1).setNeighbors(field, 0, rows - 1);
+    this.field.get(0).get(rows - 1).color = Color.red;
+    for (Node n : this.field.get(0).get(rows - 1).neighbors) {
+      n.color = Color.blue;
+    }
+  }
+
+  @Override
+  public WorldScene makeScene() {
+    WorldScene scene = new WorldScene(this.width, this.height);
+    for (ArrayList<Node> row : this.field) {
+      for (Node node : row) {
+        node.draw(scene, this.sizeW, this.sizeH, this.running);
+        node.buildWalls(scene, this.field, this.sizeW, this.sizeH);
+      }
+    }
+    return scene;
+  }
+
+  @Override
+  public void onTick() {
+
+  }
+}
+
+class Node {
+  int col;
+  int row;
+  double weight;
+  ArrayList<Node> neighbors;
+  Color color;
+
+  Node(int col, int row) {
+    this.col = col;
+    this.row = row;
+    this.weight = new Random().nextDouble();
+    this.neighbors = new ArrayList<Node>();
+    this.color = Color.gray;
+  }
+
+  void draw(WorldScene scene, int sizeW, int sizeH, boolean running) {
+    scene.placeImageXY(
+        new RectangleImage(sizeW, sizeH, "solid", this.color),
+        this.col * sizeW + sizeW / 2, this.row * sizeH + sizeH / 2);
+    scene.placeImageXY(
+        new CircleImage(5, "solid", Color.black),
+        this.col * sizeW + sizeW / 2, this.row * sizeH + sizeH / 2);
+    //if (this.color.equals(new Color(128, 176, 120)) && running) {
+    //this.color = new Color(191, 103, 103);
+    //}
+  }
+
+  void setNeighbors(ArrayList<ArrayList<Node>> grid, int col, int row) {
+    if (row < grid.get(0).size() - 1) {
+      this.neighbors.add(grid.get(col).get(row + 1));
+    }
+    if (row > 0 ) {
+      this.neighbors.add(grid.get(col).get(row - 1));
+    }
+    if (col < grid.size() - 1) {
+      this.neighbors.add(grid.get(col + 1).get(row));
+    }
+    if (col > 0) {
+      this.neighbors.add(grid.get(col - 1).get(row));
+    }
+  }
+
+  //draws walls for neighbors below and/or to the right
+  void buildWalls(WorldScene scene, ArrayList<ArrayList<Node>> grid, int sizeW, int sizeH) {
+    if (this.row > 0
+        && !this.neighbors.contains(grid.get(this.col).get(this.row - 1))) {
+      scene.placeImageXY(new LineImage(new Posn(0, sizeH), Color.black), 
+          this.col * sizeW, this.row * sizeH + sizeH / 2);
+      }
+    if (this.col > 0
+        && !this.neighbors.contains(grid.get(this.col - 1).get(this.row))) {
+      scene.placeImageXY(new LineImage(new Posn(sizeW, 0), Color.black), 
+          this.col * sizeW + sizeW / 2, this.row * sizeH);
+      }
+  }
+
+  void randomRemove() {
+    if (this.neighbors.size() > 1) {
+      int numRemove = new Random().nextInt(this.neighbors.size());
+      Node neighbor = this.neighbors.get(numRemove);
+      neighbor.neighbors.remove(this);
+      this.neighbors.remove(numRemove);
+    }
+  }
+}
+
+class ExamplesMaze {
+  Maze world = new Maze(50);
+
+  void testBigBang(Tester t) {
+    this.world.bigBang(world.width, world.height, 0.1);
+  }
+}

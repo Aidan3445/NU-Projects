@@ -1,0 +1,978 @@
+public ILoBS collide() {
+    if (this.rest.contact(this.first)) {
+      return this.rest.explodeCollisions(this.first).addList(this.first.explode()).collide();
+    } else {
+      return new ConsLoBS(this.first, this.rest.collide());
+    }
+  }
+  
+  //removes all valid collisions from list
+  public ILoBS explodeCollisions(ABS other) {
+    if (this.contact(other)) {
+      return this.rest.explodeCollisions(other).addList(this.first.explode());
+    } else {
+      return new ConsLoBS(this.first, this.rest.explodeCollisions(other));
+    }
+  }
+
+
+
+
+
+
+
+
+
+class TenBullets extends World {
+  int currentTick;
+  int bulletsLeft;
+  int bulletsOnScreen;
+  int shipsDestroyed;
+  ILoShips ships;
+  ILoBullets bullets;
+
+
+  TenBullets(int bullets) {
+    this.currentTick = 1;
+    this.bulletsLeft = bullets;
+    this.bulletsOnScreen = 0;
+    this.shipsDestroyed = 0;
+    this.ships = new MtLoShips();
+    this.bullets = new MtLoBullets();
+  }
+
+  TenBullets(int currentTick, int bulletsLeft, int shipsDestroyed, ILoShips ships, ILoBullets bullets) {
+    this.currentTick = currentTick;
+    this.bulletsLeft = bulletsLeft;
+    this.shipsDestroyed = shipsDestroyed;
+    this.ships = ships;
+    this.bullets = bullets;
+  }
+
+  public TenBullets nextTick() {
+    return new TenBullets(this.currentTick + 1, this.bulletsLeft, this.shipsDestroyed, 
+        this.ships, this.bullets); 
+  }
+
+  public boolean gameEnd() {
+    return !this.canShoot() && this.bullets.length() == 0;
+  }
+
+  public boolean canShoot() {
+    return this.bulletsLeft > 0;
+  }
+
+  public TenBullets move() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, 
+        this.ships.move(), this.bullets.move());
+  }
+
+  public TenBullets onScreen() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, 
+        this.ships.onScreen(), this.bullets.onScreen());
+  }
+
+  public TenBullets collide() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, 
+        this.ships.collide(this.bullets), this.bullets.collide(this.ships));
+  }
+
+  public TenBullets shipsDestroyed() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, 
+        this.shipsDestroyed + this.ships.numHit(this.bullets),
+        this.ships, this.bullets);
+  }
+
+  public ILoShips generateShipsHelper(int count) {
+    if (count == 0) {
+      return new MtLoShips();
+    } else {
+      if (new Random().nextInt(2) == 0) { // .nextInt(int, int) doesnt work? 
+        return new ConsLoShips(new Ships(-new Random().nextInt(60) - 20, //60 units variance for x spawn
+            new Random().nextInt(400) + 50, 1),
+            generateShipsHelper(count - 1)); //left start
+      } else {
+        return new ConsLoShips(new Ships(new Random().nextInt(60) + 520, //60 units variance for x spawn
+            new Random().nextInt(400) + 50, -1), 
+            generateShipsHelper(count - 1)); //right start
+      }
+    }
+  }
+
+  public TenBullets generateShips() {
+    if (this.currentTick % 200 == 0) {
+      return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, 
+          this.ships.addList(generateShipsHelper(new  Random().nextInt(10) + 1)), this.bullets);
+    } else {
+      return this;
+    }
+  }
+
+  public WorldScene addInfo(WorldScene scene) {
+    return scene.placeImageXY(
+        new TextImage("Bullets Left: " + Integer.toString(this.bulletsLeft), Color.black), 50, 10).
+        placeImageXY(new TextImage("Ships Destroyed: " + Integer.toString(this.shipsDestroyed), 
+            Color.black), 430, 10).placeImageXY(new TextImage("Bullets On Screen: " + Integer.toString(this.bullets.length()), 
+                Color.black), 250, 10);
+  }
+
+  @Override
+  public WorldScene makeScene() {
+    //Make a new scene.
+    WorldScene scene = new WorldScene(500, 500);
+
+    if (!this.gameEnd()) {
+      scene = this.addInfo(scene);
+
+      scene = this.ships.draw(scene);
+
+      scene = this.bullets.draw(scene);
+    }
+
+    return scene;
+  }
+
+  @Override
+  public WorldEnd worldEnds() {
+    if (this.gameEnd()) {
+      return new WorldEnd(true, this.makeEndScene());
+    } else {
+      return new WorldEnd(false, this.makeScene());
+    }
+  }
+
+  public WorldScene makeEndScene() {
+    WorldScene endScene = new WorldScene(500, 500);
+    return endScene.placeImageXY(
+        new TextImage("Ships Destroyed: " + Integer.toString(this.shipsDestroyed), Color.red), 250, 250);
+  }
+
+  @Override
+  public TenBullets onTick() {
+    return this.move().onScreen().shipsDestroyed().collide().generateShips().nextTick(); //
+  }
+
+  public TenBullets onKeyEvent(String key) {
+    if (key.equals(" ") && this.canShoot()) {
+      return new TenBullets(this.currentTick, this.bulletsLeft - 1, this.shipsDestroyed, 
+          this.ships, new ConsLoBullets(new Bullets(250, 500, 90, 0), this.bullets));
+      //return new TenBullets(this.currentTick, this.bulletsLeft - 1, 
+      //this.shipsDestroyed, this.ships, 
+      //new Bullets(250, 250, 90, 1).explode(2).addList(this.bullets));
+    } else {
+      return this;
+    }
+  }
+}
+
+abstract class ABulletsShips {
+  int xPos;
+  int yPos;
+  int speed = 2;
+
+  ABulletsShips(int xPos, int yPos) {
+    this.xPos = xPos; 
+    this.yPos = yPos;
+  }
+
+  public int getX() {
+    return this.xPos;
+  }
+
+  public int getY() {
+    return this.yPos;
+  }
+
+  public boolean offScreen() {
+    return this.getX() - 80 > 500 || this.getX() + 80 < 0
+        || this.getY() - 80 > 500 || this.getY() + 80 < 0; //set to 80 to allow for more variance in x spawn
+  }
+}
+
+class Ships extends ABulletsShips {
+  int left; //1 = left start, -1 = right start
+
+  Ships(int xPos, int yPos, int left) {
+    super(xPos, yPos);
+    this.left = left;
+  }
+
+  public Ships move() {
+    return new Ships(this.xPos + this.left * this.speed, this.yPos, this.left);
+  }
+
+  public WorldScene draw(WorldScene scene) {
+    return scene.placeImageXY(new CircleImage(20, OutlineMode.SOLID, Color.RED), 
+        this.xPos, this.yPos);
+  }
+}
+
+class Bullets extends ABulletsShips{
+  double angle;
+  int explodeNum;
+  int size = 10;
+  int maxSize = 30;
+
+  Bullets(int xPos, int yPos, double angle, int explodeNum) {
+    super(xPos, yPos);
+    this.angle = angle;
+    this.explodeNum = explodeNum;
+  }
+
+  public int getSize() {
+    if (this.size + this.explodeNum <= this.maxSize) {
+      return this.size + (3 * this.explodeNum);
+    } else {
+      return this.size = 30;
+    }
+  }
+
+  public int getExplodeNum() {
+    return this.explodeNum;
+  }
+
+  public Bullets move() {
+    return new Bullets((int) (this.xPos + 2 * this.speed * Math.cos(Math.toRadians(this.angle))), 
+        (int) (this.yPos - 2 * this.speed * Math.sin(Math.toRadians(this.angle))),
+        this.angle, this.explodeNum);
+  }
+
+  public WorldScene draw(WorldScene scene) {
+    return scene.placeImageXY(new CircleImage(this.getSize(), OutlineMode.SOLID, Color.BLUE), 
+        this.xPos, this.yPos);
+  }
+
+  public ILoBullets explode(int count) {
+    if (count == 0) {
+      return new MtLoBullets();
+    } else {
+      return new ConsLoBullets(new Bullets(this.xPos, this.yPos, 
+          count * (360 / (this.explodeNum + 1)), this.explodeNum + 1), this.explode(count - 1));
+    }
+  }
+}
+
+interface ILoShips {
+
+  boolean isMt();
+
+  int length();
+
+  ILoShips move();
+
+  ILoShips onScreen();
+
+  Ships getFirst();
+
+  ILoShips getRest();
+
+  ILoShips addList(ILoShips other);
+
+  ILoShips collide(ILoBullets bullets);
+
+  boolean collideHelper(ILoBullets bullets);
+  
+  int numHit(ILoBullets bullets);
+
+  WorldScene draw(WorldScene scene);
+}
+
+interface ILoBullets {
+
+  boolean isMt();
+
+  int length();
+
+  ILoBullets move();
+
+  ILoBullets onScreen();
+
+  Bullets getFirst();
+
+  ILoBullets getRest();
+
+  ILoBullets addList(ILoBullets other);
+
+  ILoBullets collide(ILoShips ships);
+
+  boolean collideHelper(ILoShips ships);
+
+  WorldScene draw(WorldScene scene);
+}
+
+class MtLoShips implements ILoShips {
+  MtLoShips() { }
+
+  public boolean isMt() {
+    return true;
+  }
+
+  public int length() {
+    return 0;
+  }
+
+  public ILoShips move() {
+    return this;
+  }
+
+  public ILoShips onScreen() {
+    return this;
+  }
+
+  public Ships getFirst() {
+    return new Ships(-30, -30 , 0); //represents 'empty' ship, impossible
+  }
+
+  public ILoShips getRest() {
+    return this;
+  }
+
+  public ILoShips addList(ILoShips other) {
+    return other;
+  }
+
+  public ILoShips collide(ILoBullets bullets) {
+    return this;
+  }
+
+  public boolean collideHelper(ILoBullets bullets) {
+    return false;
+  }
+  
+  public int numHit(ILoBullets bullets) {
+    return 0;
+  }
+
+
+  public WorldScene draw(WorldScene scene) {
+    return scene;
+  }
+}
+
+class MtLoBullets implements ILoBullets {
+  MtLoBullets() { }
+
+  public boolean isMt() {
+    return true;
+  }
+
+  public int length() {
+    return 0;
+  }
+
+  public ILoBullets move() {
+    return this;
+  }
+
+  public ILoBullets onScreen() {
+    return this;
+  }
+
+  public Bullets getFirst() {
+    return new Bullets(-60, -60, 0, 0); //represents 'empty' bullet, impossible
+  }
+
+  public ILoBullets getRest() {
+    return this;
+  }
+
+  public ILoBullets addList(ILoBullets other) {
+    return other;
+  }
+
+  public ILoBullets collide(ILoShips ships) {
+    return this;
+  }
+
+  public boolean collideHelper(ILoShips ships) {
+    return false;
+  }
+
+  public WorldScene draw(WorldScene scene) {
+    return scene;
+  }
+}
+
+class ConsLoShips implements ILoShips {
+  Ships first;
+  ILoShips rest;
+
+  ConsLoShips(Ships first, ILoShips rest) {
+    this.first = first;
+    this.rest = rest;
+  }
+
+  public boolean isMt() {
+    return false;
+  }
+
+  public int length() {
+    return 1 + this.rest.length();
+  }
+
+  public ILoShips move() {
+    return new ConsLoShips(this.first.move(), this.rest.move());
+  }
+
+  public ILoShips onScreen() {
+    if (!this.first.offScreen()) {
+      return new ConsLoShips(this.first, this.rest.onScreen());
+    } else {
+      return this.rest.onScreen();
+    }
+  }
+
+  public Ships getFirst() {
+    return this.first;
+  }
+
+  public ILoShips getRest() {
+    return this.rest;
+  }
+
+  public ILoShips addList(ILoShips other) {
+    return new ConsLoShips(this.first, this.rest.addList(other));
+  }
+
+  public boolean collideHelper(ILoBullets bullets) {
+    if (bullets.isMt()) {
+      return false;
+    } else {
+      return Math.hypot(this.first.getX() - bullets.getFirst().getX(), 
+          this.first.getY() - bullets.getFirst().getY()) <= bullets.getFirst().getSize() + 20
+          || this.collideHelper(bullets.getRest());
+    }
+  }
+
+  public ILoShips collide(ILoBullets bullets) {
+    if (this.collideHelper(bullets)) {
+      return this.rest.collide(bullets);
+    } else {
+      return new ConsLoShips(this.first, this.rest.collide(bullets));
+    }
+  }
+  
+  public int numHit(ILoBullets bullets) {
+    if (this.collideHelper(bullets)) {
+      return 1 + this.rest.numHit(bullets);
+    } else {
+      return this.rest.numHit(bullets);
+    }
+  }
+
+
+  public WorldScene draw(WorldScene scene) {
+    return this.rest.draw(this.first.draw(scene));
+  }
+}
+
+class ConsLoBullets implements ILoBullets {
+  Bullets first;
+  ILoBullets rest;
+
+  ConsLoBullets(Bullets first, ILoBullets rest) {
+    this.first = first;
+    this.rest = rest;
+  }
+
+  public boolean isMt() {
+    return false;
+  }
+
+  public int length() {
+    return 1 + this.rest.length();
+  }
+
+  public ILoBullets move() {
+    return new ConsLoBullets(this.first.move(), this.rest.move());
+  }
+
+  public ILoBullets onScreen() {
+    if (!this.first.offScreen()) {
+      return new ConsLoBullets(this.first, this.rest.onScreen());
+    } else {
+      return this.rest.onScreen();
+    }
+  }
+
+  public Bullets getFirst() {
+    return this.first;
+  }
+
+  public ILoBullets getRest() {
+    return this.rest;
+  }
+
+  public ILoBullets addList(ILoBullets other) {
+    return new ConsLoBullets(this.first, this.rest.addList(other));
+  }
+
+  public boolean collideHelper(ILoShips ships) {
+    if (ships.isMt()) {
+      return false;
+    } else {
+      return Math.hypot(this.first.getX() - ships.getFirst().getX(), 
+          this.first.getY() - ships.getFirst().getY()) <= 20 + this.first.getSize()
+          || this.collideHelper(ships.getRest());
+    }
+  }
+
+  public ILoBullets collide(ILoShips ships) {
+    if (this.collideHelper(ships)) {
+      return this.rest.addList(this.first.explode(this.first.getExplodeNum() + 1)).collide(ships.collide(this));
+    } else {
+      return new ConsLoBullets(this.first, this.rest.collide(ships.collide(this)));
+    }
+  }
+  
+  public WorldScene draw(WorldScene scene) {
+    return this.rest.draw(this.first.draw(scene));
+  }
+}
+
+class ExamplesTenBullets {
+  boolean testBigBang(Tester t) {
+    TenBullets world = new TenBullets(10);
+    //width, height, tickrate = 0.5 means every 0.5 seconds the onTick method will get called.
+    return world.bigBang(500, 500, 0.005);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+class TenBullets extends World {
+  int currentTick;
+  int bulletsLeft;
+  int bulletsOnScreen;
+  int shipsDestroyed;
+  ILoBulletsShips bulletsShips;
+
+
+
+  TenBullets(int bullets) {
+    this.currentTick = 1;
+    this.bulletsLeft = bullets;
+    this.bulletsOnScreen = 0;
+    this.shipsDestroyed = 0;
+    this.bulletsShips = new MtLoBulletsShips();
+
+  }
+
+  TenBullets(int currentTick, int bulletsLeft, int shipsDestroyed, ILoBulletsShips bulletsShips) {
+    this.currentTick = currentTick;
+    this.bulletsLeft = bulletsLeft;
+    this.shipsDestroyed = shipsDestroyed;
+    this.bulletsShips = bulletsShips;
+  }
+
+  public TenBullets nextTick() {
+    return new TenBullets(this.currentTick + 1, this.bulletsLeft, this.shipsDestroyed, this.bulletsShips); 
+  }
+
+  public boolean gameEnd() {
+    return !this.canShoot() && this.bulletsShips.length() == 0;
+  }
+
+  public boolean canShoot() {
+    return this.bulletsLeft > 0;
+  }
+
+  public TenBullets move() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, this.bulletsShips.move());
+  }
+
+  public TenBullets onScreen() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, this.bulletsShips.onScreen());
+  }
+
+  public TenBullets collide() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, this.bulletsShips.collide(this.bulletsShips));
+  }
+
+  public TenBullets shipsDestroyed() {
+    return new TenBullets(this.currentTick, this.bulletsLeft, 
+        this.shipsDestroyed + this.bulletsShips.numHit(this.bulletsShips), this.bulletsShips);
+  }
+
+  public ILoBulletsShips generateShipsHelper(int count) {
+    if (count == 0) {
+      return new MtLoBulletsShips();
+    } else {
+      if (new Random().nextInt(2) == 0) { // .nextInt(int, int) doesnt work? 
+        return new ConsLoBulletsShips(new Ships(-new Random().nextInt(60) - 20, //60 units variance for x spawn
+            new Random().nextInt(400) + 50, 1),
+            generateShipsHelper(count - 1)); //left start
+      } else {
+        return new ConsLoBulletsShips(new Ships(new Random().nextInt(60) + 520, //60 units variance for x spawn
+            new Random().nextInt(400) + 50, 2), 
+            generateShipsHelper(count - 1)); //right start
+      }
+    }
+  }
+
+  public TenBullets generateShips() {
+    if (this.currentTick % 200 == 0) {
+      return new TenBullets(this.currentTick, this.bulletsLeft, this.shipsDestroyed, 
+          this.bulletsShips.addList(generateShipsHelper(new  Random().nextInt(10) + 1)));
+    } else {
+      return this;
+    }
+  }
+
+  public WorldScene addInfo(WorldScene scene) {
+    return scene.placeImageXY(
+        new TextImage("Bullets Left: " + Integer.toString(this.bulletsLeft), Color.black), 50, 10).
+        placeImageXY(new TextImage("Ships Destroyed: " + Integer.toString(this.shipsDestroyed), 
+            Color.black), 430, 10).placeImageXY(new TextImage("Bullets On Screen: " + Integer.toString(this.bulletsShips.length()), 
+                Color.black), 250, 10);
+  }
+
+  @Override
+  public WorldScene makeScene() {
+    //Make a new scene.
+    WorldScene scene = new WorldScene(500, 500);
+
+    if (!this.gameEnd()) {
+      scene = this.addInfo(scene);
+
+      scene = this.bulletsShips.draw(scene);
+    }
+
+    return scene;
+  }
+
+  @Override
+  public WorldEnd worldEnds() {
+    if (this.gameEnd()) {
+      return new WorldEnd(true, this.makeEndScene());
+    } else {
+      return new WorldEnd(false, this.makeScene());
+    }
+  }
+
+  public WorldScene makeEndScene() {
+    WorldScene endScene = new WorldScene(500, 500);
+    return endScene.placeImageXY(
+        new TextImage("Ships Destroyed: " + Integer.toString(this.shipsDestroyed), Color.red), 250, 250);
+  }
+
+  @Override
+  public TenBullets onTick() {
+    return this.move().onScreen().nextTick(); //.shipsDestroyed().collide().generateShips()
+  }
+
+  public TenBullets onKeyEvent(String key) {
+    if (key.equals(" ") && this.canShoot()) {
+      return new TenBullets(this.currentTick, this.bulletsLeft - 1, this.shipsDestroyed, 
+          new ConsLoBulletsShips(new Bullets(250, 500, 90, 0), this.bulletsShips));
+      //return new TenBullets(this.currentTick, this.bulletsLeft - 1, 
+      //this.shipsDestroyed, this.ships, 
+      //new Bullets(250, 250, 90, 1).explode(2).addList(this.bullets));
+    } else {
+      return this;
+    }
+  }
+}
+
+abstract class ABulletsShips {
+  int xPos;
+  int yPos;
+  double angle;
+  int speed = 2;
+
+  ABulletsShips(int xPos, int yPos, double angle) {
+    this.xPos = xPos; 
+    this.yPos = yPos;
+    this.angle = angle;
+  }
+  
+  public boolean isSame(ABulletsShips other) {
+    return false;
+  }
+  
+  public boolean isShip() {
+    return false;
+  }
+  
+  public boolean isBullet() {
+    return false;
+  }
+
+  public int getX() {
+    return this.xPos;
+  }
+
+  public int getY() {
+    return this.yPos;
+  }
+
+  public int getSize() {
+    return 20;
+  }
+
+  public int getExplodeNum() {
+    return 0;
+  }
+
+  public boolean offScreen() {
+    return this.getX() - 80 > 500 || this.getX() + 80 < 0
+        || this.getY() - 80 > 500 || this.getY() + 80 < 0; //set to 80 to allow for more variance in x spawn
+  }
+
+  public ABulletsShips move() {
+    return new Ships((int) (this.xPos + 2 * this.speed * Math.cos(Math.toRadians(this.angle))), 
+        (int) (this.yPos - 2 * this.speed * Math.sin(Math.toRadians(this.angle))), (int) this.angle * 360);
+  }
+
+  public ILoBulletsShips explode(int count) {
+    return new MtLoBulletsShips();
+  }
+
+  public WorldScene draw(WorldScene scene) {
+    return scene.placeImageXY(new CircleImage(20, OutlineMode.SOLID, Color.RED), 
+        this.xPos, this.yPos);
+  }
+}
+
+class Ships extends ABulletsShips {
+  int left; //1 = left start, 2 = right start
+
+  Ships(int xPos, int yPos, int left) {
+    super(xPos, yPos, 360 / left);
+  }
+  
+  @Override
+  public boolean isSame(ABulletsShips other) {
+    return other.isShip();
+  }
+  
+  @Override
+  public boolean isShip() {
+    return true;
+  }
+}
+
+class Bullets extends ABulletsShips{
+  double angle;
+  int explodeNum;
+  int size = 10;
+  int maxSize = 30;
+
+  Bullets(int xPos, int yPos, double angle, int explodeNum) {
+    super(xPos, yPos, angle);
+    this.explodeNum = explodeNum;
+  }
+  
+  @Override
+  public boolean isSame(ABulletsShips other) {
+    return other.isBullet();
+  }
+  
+  @Override
+  public boolean isBullet() {
+    return true;
+  }
+
+  @Override
+  public int getSize() {
+    if (this.size + this.explodeNum <= this.maxSize) {
+      return this.size + (3 * this.explodeNum);
+    } else {
+      return this.size = 30;
+    }
+  }
+
+  @Override
+  public int getExplodeNum() {
+    return this.explodeNum;
+  }
+
+  @Override
+  public Bullets move() {
+    return new Bullets((int) (this.xPos + 2 * this.speed * Math.cos(Math.toRadians(this.angle))), 
+        (int) (this.yPos - 2 * this.speed * Math.sin(Math.toRadians(this.angle))),
+        this.angle, this.explodeNum);
+  }
+
+  @Override
+  public WorldScene draw(WorldScene scene) {
+    return scene.placeImageXY(new CircleImage(this.getSize(), OutlineMode.SOLID, Color.BLUE), 
+        this.xPos, this.yPos);
+  }
+
+  @Override
+  public ILoBulletsShips explode(int count) {
+    if (count == 0) {
+      return new MtLoBulletsShips();
+    } else {
+      return new ConsLoBulletsShips(new Bullets(this.xPos, this.yPos, 
+          this.angle, this.explodeNum + 1), this.explode(count - 1)); //count * (360 / (this.explodeNum + 1))
+    }
+  }
+}
+
+interface ILoBulletsShips {
+
+  boolean isMt();
+
+  int length();
+
+  ILoBulletsShips move();
+
+  ILoBulletsShips onScreen();
+
+  ABulletsShips getFirst();
+
+  ILoBulletsShips getRest();
+
+  ILoBulletsShips addList(ILoBulletsShips other);
+
+  ILoBulletsShips collide(ILoBulletsShips bullets);
+
+  boolean collideHelper(ILoBulletsShips bullets);
+
+  int numHit(ILoBulletsShips bullets);
+
+  WorldScene draw(WorldScene scene);
+}
+
+class MtLoBulletsShips implements ILoBulletsShips {
+  MtLoBulletsShips() { }
+
+  public boolean isMt() {
+    return true;
+  }
+
+  public int length() {
+    return 0;
+  }
+
+  public ILoBulletsShips move() {
+    return this;
+  }
+
+  public ILoBulletsShips onScreen() {
+    return this;
+  }
+
+  public ABulletsShips getFirst() {
+    return new Ships(-100, -100 , 4); //represents 'empty' ship, impossible
+  }
+
+  public ILoBulletsShips getRest() {
+    return this;
+  }
+
+  public ILoBulletsShips addList(ILoBulletsShips other) {
+    return other;
+  }
+
+  public ILoBulletsShips collide(ILoBulletsShips bullets) {
+    return this;
+  }
+
+  public boolean collideHelper(ILoBulletsShips bullets) {
+    return false;
+  }
+
+  public int numHit(ILoBulletsShips bullets) {
+    return 0;
+  }
+
+
+  public WorldScene draw(WorldScene scene) {
+    return scene;
+  }
+}
+
+class ConsLoBulletsShips implements ILoBulletsShips {
+  ABulletsShips first;
+  ILoBulletsShips rest;
+
+  ConsLoBulletsShips(ABulletsShips first, ILoBulletsShips rest) {
+    this.first = first;
+    this.rest = rest;
+  }
+
+  public boolean isMt() {
+    return false;
+  }
+
+  public int length() {
+    return 1 + this.rest.length();
+  }
+
+  public ILoBulletsShips move() {
+    return new ConsLoBulletsShips(this.first.move(), this.rest.move());
+  }
+
+  public ILoBulletsShips onScreen() {
+    if (!this.first.offScreen()) {
+      return new ConsLoBulletsShips(this.first, this.rest.onScreen());
+    } else {
+      return this.rest.onScreen();
+    }
+  }
+
+  public ABulletsShips getFirst() {
+    return this.first;
+  }
+
+  public ILoBulletsShips getRest() {
+    return this.rest;
+  }
+
+  public ILoBulletsShips addList(ILoBulletsShips other) {
+    return new ConsLoBulletsShips(this.first, this.rest.addList(other));
+  }
+
+  public boolean collideHelper(ILoBulletsShips bulletsShips) {
+    if (bulletsShips.isMt()) {
+      return false;
+    } else if (this.first.isSame(bulletsShips.getFirst())) {
+      return false;
+    } else {
+      return Math.hypot(this.first.getX() - bulletsShips.getFirst().getX(), 
+          this.first.getY() - bulletsShips.getFirst().getY()) 
+          <= bulletsShips.getFirst().getSize() + this.first.getSize()
+          || this.collideHelper(bulletsShips.getRest());
+    }
+  }
+
+  public ILoBulletsShips collide(ILoBulletsShips bulletsShips) {
+    if (this.collideHelper(bulletsShips)) {
+      return this.rest.addList(this.first.explode(this.first.getExplodeNum() + 1));
+    } else {
+      return new ConsLoBulletsShips(this.first, this.rest.collide(bulletsShips));
+    }
+  }
+
+  public int numHit(ILoBulletsShips bulletsShips) {
+    if (this.collideHelper(bulletsShips)) {
+      return 1 + this.rest.numHit(bulletsShips);
+    } else {
+      return this.rest.numHit(bulletsShips);
+    }
+  }
+
+  public WorldScene draw(WorldScene scene) {
+    return this.rest.draw(this.first.draw(scene));
+  }
+}
+
+class ExamplesTenBullets {
+  boolean testBigBang(Tester t) {
+    TenBullets world = new TenBullets(10);
+    //width, height, tickrate = 0.5 means every 0.5 seconds the onTick method will get called.
+    return world.bigBang(500, 500, 0.005);
+  }
+}
+
+
