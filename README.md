@@ -36,7 +36,7 @@ Artificial Intelligence:
         This course covered many topics within artificial intelligence such as search, game-playing, 
         probabilistic modeling, and learning algorithms. Over the course of the semester, 
         along with my groupmate Ella Taira, we applied each of those to an AI Bananagrams player that we developed.
-        Check it out here: https://github.com/Aidan3445/Bananagrams-AI-CS4100
+        Check it out here: [https://github.com/Aidan3445/Bananagrams-AI-CS4100]
 
 
 Game programming:
@@ -46,4 +46,4 @@ Game programming:
         deliverables to create a small video game demo. I worked on the charater and enemy movment, 
         the camera system, and the checkpoint system. I also designed and tested the tutorial level of the game. 
         I am very proud of what my group was able to come up with.
-        The game is publicly avaialble, check it out here: https://impostorfrogs.itch.io/villain-heist
+        The game is publicly avaialble, check it out here: [https://impostorfrogs.itch.io/villain-heist]
